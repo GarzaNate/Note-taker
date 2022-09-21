@@ -1,3 +1,5 @@
 const router = require('express').Router();
-router.get('/notes')
+router.get('/notes');
+
+
 module.exports = router
