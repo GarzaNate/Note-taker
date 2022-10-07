@@ -1,26 +1,94 @@
 const express = require('express');
 const path = require('path');
-const api = require('./routes/index');
-
+const fs = require('fs')
 const PORT = process.env.PORT || 3001;
+const uuid = require('uuid');
+
 const app = express();
 
+console.log('loading middleware');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-app.use('/api', api);
 
-
-// GET Route for homepage
+//Route to Get landing page 
 app.get('/', (req, res) =>
-  res.sendFile(path.join(__dirname, '/public/index.html'))
+res.sendFile(path.join(__dirname, '/public/index.html'))
 );
 
-// GET Route for feedback page
+//Route to Get notes pages
 app.get('/notes', (req, res) =>
-  res.sendFile(path.join(__dirname, '/public/notes.html'))
+res.sendFile(path.join(__dirname, '/public/notes.html'))
 );
+
+// Get request for api/notes
+app.get('/api/notes', (req,res) =>{
+    
+    fs.readFile('./db/db.json', function(err, data){
+        
+            res.json(JSON.parse(data))
+            
+        })        
+});
+
+app.get('*', (req,res) =>
+    res.sendFile(path.join(__dirname, '/public/index.html'))
+);
+
+// POST routes for notes
+app.post('/api/notes', (req,res) => {
+  // deconstructing the Notetitle and notetext from request and adding to variable
+  //const unique_id = uniqid.time();
+  const { title, text } = req.body;
+  if (req.body){
+  const savedNotes = {
+      title,
+      text,
+      id: uuid,
+      };
+   fs.readFile('./db/db.json', 'utf8', (err, data) => {
+      if (err) {
+          console.error(err);
+        } else {
+          console.log(data);
+          const parsedData = JSON.parse(data);
+          parsedData.push(savedNotes);
+          console.log(parsedData);
+          fs.writeFile('./db/db.json',JSON.stringify(parsedData) , (err) => {
+               err ? console.error(err) : console.log("Success writing notes to db")
+              });
+              console.log(JSON.stringify(parsedData));
+        }
+   })
+
+  }else{
+      console.log("there was an error");
+      }
+      res.sendFile(path.join(__dirname, './public/notes.html'));
+  })
+
+  // route to delete notes when clicked on trashcan
+app.delete('/api/notes/:id', (req, res) =>{
+  let deleteId = req.params.id
+  fs.readFile('./db/db.json', function (err, data) {
+      if(err) {
+          console.error(err);
+      } else {
+      //grab the list of notes already there
+      let oldArray = JSON.parse(data);
+      //create new rray by filtering out the selected id to be deleted
+      let newArray = oldArray.filter(object => object.id !== deleteId);
+      //rewrite the new array to the db.json
+      fs.writeFile('./db/db.json', JSON.stringify(newArray), (err) =>{
+          err ? console.error(err) : console.log("Success deleting note")
+          });
+      }
+  //response
+  res.sendFile(path.join(__dirname, '.public/notes.html'));
+  });
+});
+
 
 app.listen(PORT, () =>
   console.log(`App listening at http://localhost:${PORT} 🚀`)
